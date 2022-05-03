@@ -78,7 +78,7 @@ fn push(values: &Vec<String>) -> Result<&'static str> {
     return Ok("added or updated env keys");
 }
 
-/// Simple program to update environment variables in mutliple places
+/// Simple program to update environment variables in multiple places
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
 struct Args {
