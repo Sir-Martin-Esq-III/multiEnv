@@ -10,8 +10,8 @@ struct MultiEnvrc {
     folder_paths: Vec<String>,
 }
 
-fn get_all_paths<T: de::DeserializeOwned>(mulit_env_rc_path: &str) -> Result<T> {
-    let file = File::open(mulit_env_rc_path)?;
+fn get_all_paths<T: de::DeserializeOwned>(multi_env_rc_path: &str) -> Result<T> {
+    let file = File::open(multi_env_rc_path)?;
     let reader = BufReader::new(file);
     let mut v: T = serde_json::from_reader(reader).unwrap();
     Ok(v)
@@ -67,13 +67,8 @@ fn push(values: &Vec<String>) -> Result<&'static str> {
     let path_file = "../../multiEnvrc.json";
     let all_paths = get_all_paths::<MultiEnvrc>(path_file)?;
     for path in all_paths.folder_paths.iter() {
-        let fileReader = fileManagement::FileManager::New(path.to_string());
-        for key in values.iter() {
-            fileReader.write_to_file(key.to_string());
-            // let file_path = format!("{}/.envrc", path);
-            // let mut file = File::create(file_path)?;
-            // file.write(format!("export {}", key).as_bytes())?;
-        }
+        let file_reader = fileManagement::FileManager::New(path.to_string());
+        file_reader.write_to_file(values)?;
     }
     return Ok("added or updated env keys");
 }
