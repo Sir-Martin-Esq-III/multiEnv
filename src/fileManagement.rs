@@ -27,6 +27,7 @@ impl FileManager {
     }
 
     pub fn write_to_file(&self, values_to_add: &Vec<String>) -> Result<&'static str, Error> {
+        //Move this out of here
         let mut env_file_final_contents = values_to_add
             .clone()
             .iter()
@@ -40,10 +41,16 @@ impl FileManager {
             match line {
                 Ok(line_value) => {
                     // println!("{}", line_value);
-                    // let r = Regex::new("name").unwrap();
-                    // if values_to_add.iter().any(|value| r.is_match(value)) == false {
-                    env_file_final_contents.push(line_value)
-                    // }
+                    // format!("(?<=export )(.*)(?= \=)")
+                    let pattern = format!(r"{}", line_value.split("=").collect::<Vec<&str>>()[0]);
+                    let r = Regex::new(&pattern).unwrap();
+                    // println!("{:?} {:?}", r.is_match(&line_value), line_value);
+                    if !env_file_final_contents
+                        .iter()
+                        .any(|value| r.is_match(value))
+                    {
+                        env_file_final_contents.push(line_value)
+                    }
                 }
                 Err(err) => println!("{}", err),
             }
