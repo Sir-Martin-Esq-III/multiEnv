@@ -66,9 +66,13 @@ fn remove(path_to_remove: String) -> Result<&'static str> {
 fn push(values: &Vec<String>) -> Result<&'static str> {
     let path_file = "../../multiEnvrc.json";
     let all_paths = get_all_paths::<MultiEnvrc>(path_file)?;
+    let format_values = values
+        .iter()
+        .map(|keys| format!("export {}", keys))
+        .collect::<Vec<_>>();
     for path in all_paths.folder_paths.iter() {
-        let file_reader = fileManagement::FileManager::New(path.to_string());
-        file_reader.write_to_file(values)?;
+        fileManagement::FileManager::new(path.to_string())
+            .write_to_file(&mut format_values.clone())?;
     }
     return Ok("added or updated env keys");
 }
