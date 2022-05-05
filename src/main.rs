@@ -1,6 +1,6 @@
 use clap::*;
 use serde::{de, Deserialize, Serialize};
-use std::fs::File;
+use std::fs::{canonicalize, File};
 use std::io::{BufReader, Write};
 
 mod fileManagement;
@@ -19,6 +19,8 @@ fn get_all_paths<T: de::DeserializeOwned>(multi_env_rc_path: &str) -> Result<T> 
 
 fn add(new_path: String) -> Result<&'static str> {
     let path_file = "../../multiEnvrc.json";
+    let test = canonicalize(&new_path)?;
+    println!("{:?}", test);
     let mut all_paths = get_all_paths::<MultiEnvrc>(path_file)?;
     if all_paths.folder_paths.contains(&new_path) {
         return Ok("Path already exists");
@@ -72,10 +74,24 @@ fn push(values: &Vec<String>) -> Result<&'static str> {
         .collect::<Vec<_>>();
     for path in all_paths.folder_paths.iter() {
         fileManagement::FileManager::new(path.to_string())
-            .write_to_file(&mut format_values.clone())?;
+            .add_vals_to_file(format_values.clone())?;
     }
     return Ok("added or updated env keys");
 }
+fn delete(values: &Vec<String>) -> Result<&'static str> {
+    let path_file = "../../multiEnvrc.json";
+    let all_paths = get_all_paths::<MultiEnvrc>(path_file)?;
+    let format_values = values
+        .iter()
+        .map(|keys| format!("export {}=", keys))
+        .collect::<Vec<_>>();
+    for path in all_paths.folder_paths.iter() {
+        fileManagement::FileManager::new(path.to_string())
+            .remove_vals_from_file(format_values.clone())?;
+    }
+    return Ok("Removed env keys");
+}
+fn init() {}
 
 /// Simple program to update environment variables in multiple places
 #[derive(Parser, Debug)]
@@ -89,9 +105,17 @@ struct Args {
     #[clap(short, long)]
     remove: Option<String>,
 
-    ///Push a change to your env files
+    ///Push a key(s) to your env files
     #[clap(short, long, multiple_values = true)]
     push: Option<Vec<String>>,
+
+    ///Deletes a key(s) from your env files
+    #[clap(short, long, multiple_values = true)]
+    delete: Option<Vec<String>>,
+
+    ///Initialise the cli tool
+    #[clap(short, long)]
+    init: bool,
 }
 
 fn main() {
@@ -120,5 +144,16 @@ fn main() {
             println!("res {:?}", res);
         }
         None => (),
+    }
+    match c.delete {
+        Some(value) => {
+            let res = delete(&value);
+            println!("res {:?}", res);
+        }
+        None => (),
+    }
+
+    match c.init {
+        _ => todo!(),
     }
 }
