@@ -46,6 +46,10 @@ impl FileManager {
         for line in file_buffer.lines() {
             match line {
                 Ok(line_value) => {
+                    if line_value == "" {
+                        final_contents.push("".to_string());
+                        continue;
+                    }
                     let pattern = FileManager::create_pattern(&line_value);
                     if !final_contents.iter().any(|value| pattern.is_match(value)) {
                         final_contents.push(line_value)
@@ -64,6 +68,10 @@ impl FileManager {
         for line in file_buffer.lines() {
             match line {
                 Ok(line_value) => {
+                    if line_value == "" {
+                        final_contents.push("".to_string());
+                        continue;
+                    }
                     let pattern = FileManager::create_pattern(&line_value);
                     if !values_to_rem.iter().any(|value| pattern.is_match(value)) {
                         final_contents.push(line_value)

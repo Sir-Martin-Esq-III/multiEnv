@@ -10,6 +10,9 @@ struct MultiEnvrc {
     folder_paths: Vec<String>,
 }
 
+//TODO:Better error handling
+//TODO: Move away from relative paths
+
 fn get_all_paths<T: de::DeserializeOwned>(multi_env_rc_path: &str) -> Result<T> {
     let file = File::open(multi_env_rc_path)?;
     let reader = BufReader::new(file);
@@ -91,7 +94,11 @@ fn delete(values: &Vec<String>) -> Result<&'static str> {
     }
     return Ok("Removed env keys");
 }
-fn init() {}
+fn init() {
+    /*TODO:
+        when called, it should create a new file in ~/.multienv/ dir
+    */
+}
 
 /// Simple program to update environment variables in multiple places
 #[derive(Parser, Debug)]
