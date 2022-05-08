@@ -1,6 +1,6 @@
 use clap::*;
 use serde::{de, Deserialize, Serialize};
-use std::fs::{canonicalize, File};
+use std::fs::File;
 use std::io::{BufReader, Write};
 
 mod fileManagement;
@@ -13,64 +13,67 @@ struct MultiEnvrc {
 //TODO:Better error handling
 //TODO: Move away from relative paths
 
-fn get_all_paths<T: de::DeserializeOwned>(multi_env_rc_path: &str) -> Result<T> {
+fn deserialize_config<T: de::DeserializeOwned>(multi_env_rc_path: &str) -> Result<T> {
     let file = File::open(multi_env_rc_path)?;
     let reader = BufReader::new(file);
     let mut v: T = serde_json::from_reader(reader).unwrap();
     Ok(v)
 }
 
-fn add(new_path: String) -> Result<&'static str> {
-    let path_file = "../../multiEnvrc.json";
-    let test = canonicalize(&new_path)?;
-    println!("{:?}", test);
-    let mut all_paths = get_all_paths::<MultiEnvrc>(path_file)?;
-    if all_paths.folder_paths.contains(&new_path) {
-        return Ok("Path already exists");
+fn serialize_config<T: serde::Serialize>(
+    file_path: &str,
+    content: T,
+) -> Result<&'static str, &'static str> {
+    let serialised_json = serde_json::to_string_pretty(&content).unwrap();
+    let mut file = File::create(file_path).unwrap();
+    let file_write_successful = file.write_all(serialised_json.as_bytes());
+    match file_write_successful {
+        Ok(_) => Ok("Added path"),
+        Err(_) => Err("Failed to add path to config file"),
     }
-
-    all_paths.folder_paths.push(new_path);
-    let string = serde_json::to_string_pretty(&all_paths);
-    match string {
-        Err(err) => {
-            println!("{:?}", err);
-        }
-        Ok(val) => {
-            let mut file = File::create(path_file)?;
-            file.write_all(val.as_bytes())?;
-        }
-    }
-    return Ok("Added path");
 }
 
-fn remove(path_to_remove: String) -> Result<&'static str> {
+fn add(new_path: String) -> Result<&'static str, &'static str> {
     let path_file = "../../multiEnvrc.json";
-    let mut all_paths = get_all_paths::<MultiEnvrc>(path_file)?;
-
-    if all_paths.folder_paths.contains(&path_to_remove) == false {
-        return Ok("Path doesnt exist");
-    }
-
-    all_paths
-        .folder_paths
-        .retain(|path| *path != path_to_remove);
-
-    let serialised_json = serde_json::to_string_pretty(&all_paths);
-    match serialised_json {
-        Err(err) => {
-            println!("{:?}", err);
+    let all_paths = deserialize_config::<MultiEnvrc>(path_file);
+    match all_paths {
+        Ok(mut paths) => {
+            if paths.folder_paths.contains(&new_path) {
+                return Ok("Path already exists");
+            }
+            paths.folder_paths.push(new_path);
+            let file_write_successful = serialize_config::<MultiEnvrc>(path_file, paths);
+            match file_write_successful {
+                Ok(_) => Ok("Added path"),
+                Err(_) => Err("Failed to add path to config file"),
+            }
         }
-        Ok(val) => {
-            let mut file = File::create(path_file)?;
-            file.write_all(val.as_bytes())?;
-        }
+        Err(_) => Err("Failed to read from config file"),
     }
-    return Ok("Path Deleted");
+}
+
+fn remove(path_to_remove: String) -> Result<&'static str, &'static str> {
+    let path_file = "../../multiEnvrc.json";
+    let mut all_paths = deserialize_config::<MultiEnvrc>(path_file);
+    match all_paths {
+        Ok(mut paths) => {
+            if paths.folder_paths.contains(&path_to_remove) == false {
+                return Ok("Path doesnt exist in your config");
+            }
+            paths.folder_paths.retain(|path| *path != path_to_remove);
+            let file_write_successful = serialize_config::<MultiEnvrc>(path_file, paths);
+            match file_write_successful {
+                Ok(_) => Ok("Removed path"),
+                Err(_) => Err("Failed to add path to config file"),
+            }
+        }
+        Err(_) => Err("Failed to read from config file"),
+    }
 }
 
 fn push(values: &Vec<String>) -> Result<&'static str> {
     let path_file = "../../multiEnvrc.json";
-    let all_paths = get_all_paths::<MultiEnvrc>(path_file)?;
+    let all_paths = deserialize_config::<MultiEnvrc>(path_file)?;
     let format_values = values
         .iter()
         .map(|keys| format!("export {}", keys))
@@ -81,9 +84,10 @@ fn push(values: &Vec<String>) -> Result<&'static str> {
     }
     return Ok("added or updated env keys");
 }
+
 fn delete(values: &Vec<String>) -> Result<&'static str> {
     let path_file = "../../multiEnvrc.json";
-    let all_paths = get_all_paths::<MultiEnvrc>(path_file)?;
+    let all_paths = deserialize_config::<MultiEnvrc>(path_file)?;
     let format_values = values
         .iter()
         .map(|keys| format!("export {}=", keys))
@@ -119,10 +123,9 @@ struct Args {
     ///Deletes a key(s) from your env files
     #[clap(short, long, multiple_values = true)]
     delete: Option<Vec<String>>,
-
-    ///Initialise the cli tool
-    #[clap(short, long)]
-    init: bool,
+    // ///Initialise the cli tool
+    // #[clap(short, long)]
+    // init: bool,
 }
 
 fn main() {
@@ -132,8 +135,8 @@ fn main() {
         Some(value) => {
             let res = add(value);
             match res {
-                Ok(val) => println!("{:?}", val),
-                Err(error) => println!("{:?}", error),
+                Ok(val) => println!("{}", val),
+                Err(error) => println!("{}", error),
             }
         }
         None => (),
@@ -141,26 +144,35 @@ fn main() {
     match c.remove {
         Some(value) => {
             let res = remove(value);
-            println!("res {:?}", res);
+            match res {
+                Ok(val) => println!("{}", val),
+                Err(error) => println!("{}", error),
+            }
         }
         None => (),
     }
     match c.push {
         Some(value) => {
             let res = push(&value);
-            println!("res {:?}", res);
+            match res {
+                Ok(val) => println!("{}", val),
+                Err(error) => println!("{}", error),
+            }
         }
         None => (),
     }
     match c.delete {
         Some(value) => {
             let res = delete(&value);
-            println!("res {:?}", res);
+            match res {
+                Ok(val) => println!("{}", val),
+                Err(error) => println!("{}", error),
+            }
         }
         None => (),
     }
 
-    match c.init {
-        _ => todo!(),
-    }
+    // match c.init {
+    //     _ => todo!(),
+    // }
 }
