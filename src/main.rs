@@ -1,8 +1,8 @@
 use clap::*;
 use serde::{de, Deserialize, Serialize};
-use std::fs::File;
+use std::fs::{File};
 use std::io::{BufReader, Write};
-
+use std::env;
 mod fileManagement;
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -10,16 +10,14 @@ struct MultiEnvrc {
     folder_paths: Vec<String>,
 }
 
-//TODO:Better error handling
-//TODO: Move away from relative paths
+const MULTI_ENVRC_FILE_PATH: &str = ".multienv/multiEnvrc.json";
 
-const MULTI_ENVRC_FILE_PATH: &str = "./multiEnvrc.json";
-
-fn deserialize_config<T: de::DeserializeOwned>(multi_env_rc_path: &str) -> Result<T> {
-    let file = File::open(multi_env_rc_path)?;
+fn deserialize_config<T: de::DeserializeOwned>(multi_env_rc_path: &str) -> Result<T,std::io::Error> {
+    let file = File::open(env::home_dir().unwrap().join(multi_env_rc_path))?;
     let reader = BufReader::new(file);
     let mut v: T = serde_json::from_reader(reader).unwrap();
     Ok(v)
+    
 }
 
 fn serialize_config<T: serde::Serialize>(
@@ -27,7 +25,7 @@ fn serialize_config<T: serde::Serialize>(
     content: T,
 ) -> Result<&'static str, &'static str> {
     let serialised_json = serde_json::to_string_pretty(&content).unwrap();
-    let mut file = File::create(file_path).unwrap();
+    let mut file = File::create(env::home_dir().unwrap().join(file_path)).unwrap();
     let file_write_successful = file.write_all(serialised_json.as_bytes());
     match file_write_successful {
         Ok(_) => Ok("Added path"),
@@ -36,8 +34,7 @@ fn serialize_config<T: serde::Serialize>(
 }
 
 fn add(new_path: String) -> Result<&'static str, &'static str> {
-    let all_paths = deserialize_config::<MultiEnvrc>(MULTI_ENVRC_FILE_PATH);
-    match all_paths {
+    let all_paths = deserialize_config::<MultiEnvrc>(MULTI_ENVRC_FILE_PATH);    match all_paths {
         Ok(mut paths) => {
             if paths.folder_paths.contains(&new_path) {
                 return Ok("Path already exists");
