@@ -13,6 +13,8 @@ struct MultiEnvrc {
 //TODO:Better error handling
 //TODO: Move away from relative paths
 
+const MULTI_ENVRC_FILE_PATH: &str = "./multiEnvrc.json";
+
 fn deserialize_config<T: de::DeserializeOwned>(multi_env_rc_path: &str) -> Result<T> {
     let file = File::open(multi_env_rc_path)?;
     let reader = BufReader::new(file);
@@ -34,15 +36,15 @@ fn serialize_config<T: serde::Serialize>(
 }
 
 fn add(new_path: String) -> Result<&'static str, &'static str> {
-    let path_file = "../../multiEnvrc.json";
-    let all_paths = deserialize_config::<MultiEnvrc>(path_file);
+    let all_paths = deserialize_config::<MultiEnvrc>(MULTI_ENVRC_FILE_PATH);
     match all_paths {
         Ok(mut paths) => {
             if paths.folder_paths.contains(&new_path) {
                 return Ok("Path already exists");
             }
             paths.folder_paths.push(new_path);
-            let file_write_successful = serialize_config::<MultiEnvrc>(path_file, paths);
+            let file_write_successful =
+                serialize_config::<MultiEnvrc>(MULTI_ENVRC_FILE_PATH, paths);
             match file_write_successful {
                 Ok(_) => Ok("Added path"),
                 Err(_) => Err("Failed to add path to config file"),
@@ -53,15 +55,15 @@ fn add(new_path: String) -> Result<&'static str, &'static str> {
 }
 
 fn remove(path_to_remove: String) -> Result<&'static str, &'static str> {
-    let path_file = "../../multiEnvrc.json";
-    let mut all_paths = deserialize_config::<MultiEnvrc>(path_file);
+    let mut all_paths = deserialize_config::<MultiEnvrc>(MULTI_ENVRC_FILE_PATH);
     match all_paths {
         Ok(mut paths) => {
             if paths.folder_paths.contains(&path_to_remove) == false {
                 return Ok("Path doesnt exist in your config");
             }
             paths.folder_paths.retain(|path| *path != path_to_remove);
-            let file_write_successful = serialize_config::<MultiEnvrc>(path_file, paths);
+            let file_write_successful =
+                serialize_config::<MultiEnvrc>(MULTI_ENVRC_FILE_PATH, paths);
             match file_write_successful {
                 Ok(_) => Ok("Removed path"),
                 Err(_) => Err("Failed to add path to config file"),
@@ -72,8 +74,7 @@ fn remove(path_to_remove: String) -> Result<&'static str, &'static str> {
 }
 
 fn push(values: &Vec<String>) -> Result<&'static str> {
-    let path_file = "../../multiEnvrc.json";
-    let all_paths = deserialize_config::<MultiEnvrc>(path_file)?;
+    let all_paths = deserialize_config::<MultiEnvrc>(MULTI_ENVRC_FILE_PATH)?;
     let format_values = values
         .iter()
         .map(|keys| format!("export {}", keys))
@@ -86,8 +87,7 @@ fn push(values: &Vec<String>) -> Result<&'static str> {
 }
 
 fn delete(values: &Vec<String>) -> Result<&'static str> {
-    let path_file = "../../multiEnvrc.json";
-    let all_paths = deserialize_config::<MultiEnvrc>(path_file)?;
+    let all_paths = deserialize_config::<MultiEnvrc>(MULTI_ENVRC_FILE_PATH)?;
     let format_values = values
         .iter()
         .map(|keys| format!("export {}=", keys))
@@ -97,11 +97,6 @@ fn delete(values: &Vec<String>) -> Result<&'static str> {
             .remove_vals_from_file(format_values.clone())?;
     }
     return Ok("Removed env keys");
-}
-fn init() {
-    /*TODO:
-        when called, it should create a new file in ~/.multienv/ dir
-    */
 }
 
 /// Simple program to update environment variables in multiple places
@@ -123,9 +118,6 @@ struct Args {
     ///Deletes a key(s) from your env files
     #[clap(short, long, multiple_values = true)]
     delete: Option<Vec<String>>,
-    // ///Initialise the cli tool
-    // #[clap(short, long)]
-    // init: bool,
 }
 
 fn main() {
@@ -156,7 +148,7 @@ fn main() {
             let res = push(&value);
             match res {
                 Ok(val) => println!("{}", val),
-                Err(error) => println!("{}", error),
+                Err(error) => println!("Error trying to push updated values: -> {}", error),
             }
         }
         None => (),
@@ -166,13 +158,9 @@ fn main() {
             let res = delete(&value);
             match res {
                 Ok(val) => println!("{}", val),
-                Err(error) => println!("{}", error),
+                Err(error) => println!("Error trying to delete values: -> {}", error),
             }
         }
         None => (),
     }
-
-    // match c.init {
-    //     _ => todo!(),
-    // }
 }
